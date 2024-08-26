@@ -1,6 +1,5 @@
-const { context } = require("@actions/github");
-const core = require("@actions/core");
-
+import { context } from "@actions/github";
+import * as core from "@actions/core";
 import isValidCommitMessage from "./isValidCommitMesage";
 import extractCommits from "./extractCommits";
 
@@ -9,18 +8,44 @@ async function run() {
         `ℹ️ Checking if commit messages are following the Conventional Commits specification...`
     );
 
+    // Get the current and target branch names
+    const headRef = context.ref.replace('refs/heads/', '');
+    const baseRef = context.payload.pull_request?.base?.ref;
+
+    core.info(`current: ${headRef}`);
+    core.info(`target: ${baseRef}`);
+    core.setFailed("🚫 test");
+    return;
+    if (baseRef) {
+        if (headRef.startsWith('hotfix') || headRef.startsWith('release')) {
+            if (baseRef !== 'master') {
+                core.setFailed("🚫 Hotfix or release branches must target the 'master' branch.");
+                return;
+            }
+        } else {
+            if (baseRef === 'master') {
+                core.setFailed("🚫 Non-hotfix/release branches cannot target the 'master' branch.");
+                return;
+            }
+        }
+    } else {
+        core.setFailed("🚫 Could not determine the target branch.");
+        return;
+    }
+
+    // Continue with the commit message validation
     const extractedCommits = await extractCommits(context, core);
     if (extractedCommits.length === 0) {
         core.info(`No commits to check, skipping...`);
         return;
     }
 
-    let hasErrors;
+    let hasErrors = false;
     core.startGroup("Commit messages:");
+    const allowedCommitTypes = core.getInput("allowed-commit-types").split(",");
+
     for (let i = 0; i < extractedCommits.length; i++) {
         let commit = extractedCommits[i];
-
-        const allowedCommitTypes = core.getInput("allowed-commit-types").split(",");
 
         if (isValidCommitMessage(commit.message, allowedCommitTypes)) {
             core.info(`✅ ${commit.message}`);
