@@ -12,18 +12,17 @@ async function run() {
     const headRef = context.ref.replace('refs/heads/', '');
     const baseRef = context.payload.pull_request?.base?.ref;
 
+    //core.info(`Release process docs: here wiki`);
     core.info(`current: ${headRef}`);
     core.info(`target: ${baseRef}`);
-    core.setFailed("🚫 test");
-    return;
     if (baseRef) {
         if (headRef.startsWith('hotfix') || headRef.startsWith('release')) {
-            if (baseRef !== 'master') {
+            if (baseRef !== 'master' || baseRef !== 'main') {
                 core.setFailed("🚫 Hotfix or release branches must target the 'master' branch.");
                 return;
             }
         } else {
-            if (baseRef === 'master') {
+            if (baseRef === 'master' || baseRef === 'main') {
                 core.setFailed("🚫 Non-hotfix/release branches cannot target the 'master' branch.");
                 return;
             }
